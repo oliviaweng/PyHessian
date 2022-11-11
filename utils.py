@@ -93,7 +93,7 @@ def getData(name='cifar10', train_bs=128, test_bs=1000):
     return train_loader, test_loader
 
 
-def test(model, test_loader, cuda=True):
+def test(model, test_loader, cuda=False):
     """
     Get the test performance
     """

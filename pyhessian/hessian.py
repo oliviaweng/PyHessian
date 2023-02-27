@@ -70,7 +70,7 @@ class hessian():
                 ), self.targets.cuda()
 
             # if we only compute the Hessian information for a single batch data, we can re-use the gradients.
-            outputs, grad1, grad2, grad3 = self.model(self.inputs) 
+            outputs = self.model(self.inputs) 
             targets = self.targets.detach().numpy()  # original
             # targets = np.argmax(self.targets.detach().numpy(), axis=1)  # original
             loss = self.criterion(outputs, torch.tensor(targets))
@@ -84,25 +84,26 @@ class hessian():
         self.paramsL = paramsL  # params used for for each layer 
         self.gradsL = gradsL  # gradient used for for each layer 
 
-    def dataloader_hv_product(self, v):
+    def dataloader_hv_product(self, layer, params, v):
 
         device = self.device
         num_data = 0  # count the number of datum points in the dataloader
 
-        THv = [torch.zeros(p.size()).to(device) for p in self.params
+        THv = [torch.zeros(p.size()).to(device) for p in params
               ]  # accumulate result
         for inputs, targets in self.data:
             self.model.zero_grad()
             tmp_num_data = inputs.size(0)
             outputs = self.model(inputs.to(device))
-            targets = np.argmax(targets.detach().numpy(), axis=1)
+            targets = targets.detach().numpy()
+            # targets = np.argmax(targets.detach().numpy(), axis=1)  # original
             loss = self.criterion(outputs, torch.tensor(targets))
             # loss = self.criterion(outputs, targets.to(device))
             loss.backward(create_graph=True)
             params, gradsH, gradsL, paramsL = get_params_grad(self.model, self.layers)
             self.model.zero_grad()
-            Hv = torch.autograd.grad(gradsH,
-                                     params,
+            Hv = torch.autograd.grad(gradsL[layer],
+                                     paramsL[layer],
                                      grad_outputs=v,
                                      only_inputs=True,
                                      retain_graph=False)
@@ -203,7 +204,7 @@ class hessian():
                     v_i[v_i == 0] = -1
 
                 if self.full_dataset:
-                    _, Hv = self.dataloader_hv_product(v)
+                    _, Hv = self.dataloader_hv_product(layer, params, v)
                 else:
                     Hv = hessian_vector_product(gradsH, params, v)
                 trace_vhv.append(group_product(Hv, v))

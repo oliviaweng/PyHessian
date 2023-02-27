@@ -75,11 +75,11 @@ def get_params_grad(model, layers):
         if not param.requires_grad:
             continue
         params.append(param)
-        grads.append(0. if param.grad is None else param.grad + 0.)
+        grads.append(torch.tensor(0.) if param.grad is None else param.grad + 0.)
         for layer in layers:
             if layer in name:
                 layer_params[layer].append(param)
-                layer_grads[layer].append(0. if param.grad is None else param.grad + 0.)
+                layer_grads[layer].append(torch.zeros(param.shape, requires_grad=True) if param.grad is None else param.grad + 0.)
 
     return params, grads, layer_grads, layer_params
 

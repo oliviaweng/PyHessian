@@ -151,9 +151,9 @@ def get_params(model_orig,  model_perb, direction, alpha):
         m_perb.data = m_orig.data + alpha * d
     return model_perb
 
-top_eigenvalues, top_eigenvector, eigenvalueL, eigenvectorL = hessian_comp.eigenvalues()
+# top_eigenvalues, top_eigenvector, eigenvalueL, eigenvectorL = hessian_comp.eigenvalues()
 trace, traceL = hessian_comp.trace()
-density_eigen, density_weight = hessian_comp.density()
+# density_eigen, density_weight = hessian_comp.density()
 
 plt.figure()
 tmp = [np.mean(trace_vhv) for trace_vhv in traceL.values()]
@@ -163,12 +163,12 @@ plt.ylabel('Average Hessian Trace')
 plt.xticks(list(range(len(tmp))))
 plt.grid()
 plt.legend(['Jet Tagger'])
-plt.savefig('output/trace-jettagger-v2.png')
+plt.savefig('output/trace-jettagger-v2-batches.png')
 plt.yscale('log')
-plt.savefig('output/trace-jettagger-log-v2.png')
+plt.savefig('output/trace-jettagger-log-v2-batches.png')
 plt.close()
 
-print('\n***Top Eigenvalues: ', top_eigenvalues)
+# print('\n***Top Eigenvalues: ', top_eigenvalues)
 print('\n***Trace: ', np.mean(trace))
 
 

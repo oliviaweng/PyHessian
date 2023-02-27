@@ -20,7 +20,7 @@ class ThreeLayer(nn.Module):
         relu_2.retain_grad()
         relu_3 = self.act(self.dense_3(relu_2))
         relu_3.retain_grad()
-        return self.softmax(self.dense_4(relu_3)), relu_1, relu_2, relu_3
+        return self.softmax(self.dense_4(relu_3))
 
 
 class ThreeLayerBN(nn.Module):

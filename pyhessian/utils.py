@@ -75,13 +75,11 @@ def get_params_grad(model, layers):
         if not param.requires_grad:
             continue
         params.append(param)
-        grads.append(0.0 if param.grad is None else param.grad + 0.0)
+        grads.append(torch.tensor(0.) if param.grad is None else param.grad + 0.)
         for layer in layers:
             if layer in name:
                 layer_params[layer].append(param)
-                layer_grads[layer].append(
-                    0.0 if param.grad is None else param.grad + 0.0
-                )
+                layer_grads[layer].append(torch.zeros(param.shape, requires_grad=True) if param.grad is None else param.grad + 0.)
 
     return params, grads, layer_grads, layer_params
 
@@ -107,3 +105,12 @@ def orthnormal(w, v_list):
     for v in v_list:
         w = group_add(w, v, alpha=-group_product(w, v))
     return normalization(w)
+
+param_layers = ['Linear', 'Bilinear', 'Conv1d', 'Conv2d', 'Conv3d', 'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d']
+
+def get_param_layers(model):
+    found_layers = []
+    for layer_name, module in model.named_modules():
+        if module.__class__.__name__ in param_layers:
+            found_layers.append(layer_name)
+    return found_layers

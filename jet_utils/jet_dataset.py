@@ -8,8 +8,8 @@ from torch.utils.data import Dataset
 from sklearn import preprocessing
 
 
-class JetTaggingDataset(Dataset):
-    def __init__(self, path, features, preprocess):
+class JetDataset(Dataset):
+    def __init__(self, path, features, preprocess, train=True):
         """
         Args:
             path (str): Path to dataset.
@@ -19,11 +19,17 @@ class JetTaggingDataset(Dataset):
         Raises:
             RuntimeError: If path is not a directory.
         """
-        self.path = path
+
+        if train:
+            self.path = os.path.join(path, "train")
+        else:
+            self.path = os.path.join(path, "val")
+
         self.features = features
 
         if os.path.isdir(path):
             self.data, self.labels = self.load_data()
+            self.labels = np.argmax(self.labels, 1)
         else:
             raise RuntimeError(f"Path is not a directory: {path}")
 
@@ -50,7 +56,6 @@ class JetTaggingDataset(Dataset):
             file = os.path.join(self.path, file)
             try:
                 h5_file = h5py.File(file, "r")
-
                 if files_parsed == 0:
                     feature_names = np.array(h5_file["jetFeatureNames"])
                     feature_names = np.array(
@@ -60,16 +65,15 @@ class JetTaggingDataset(Dataset):
                         int(np.where(feature_names == feature)[0])
                         for feature in self.features
                     ]
-
                 h5_dataset = h5_file["jets"]
                 # convert to ndarray and concatenate with dataset
-                h5_dataset = np.array(h5_dataset, dtype=np.float)
+                h5_dataset = np.array(h5_dataset, dtype=np.float32)
                 # separate data from labels
                 np_data = h5_dataset[:, :54]
                 np_labels = h5_dataset[:, -6:-1]
                 # update data and labels
-                data = np.concatenate((data, np_data), axis=0, dtype=np.float)
-                labels = np.concatenate((labels, np_labels), axis=0, dtype=np.float)
+                data = np.concatenate((data, np_data), axis=0, dtype=np.float32)
+                labels = np.concatenate((labels, np_labels), axis=0, dtype=np.float32)
                 h5_file.close()
                 # update progress bar
                 files_parsed += 1

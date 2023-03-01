@@ -23,14 +23,7 @@ import math
 from torch.autograd import Variable
 import numpy as np
 
-from pyhessian.utils import (
-    group_product,
-    group_add,
-    normalization,
-    get_params_grad,
-    hessian_vector_product,
-    orthnormal,
-)
+from pyhessian.utils import group_product, group_add, normalization, get_params_grad, hessian_vector_product, orthnormal, get_param_layers
 
 
 class hessian:
@@ -48,7 +41,7 @@ class hessian:
         data: a single batch of data, including inputs and its corresponding labels
         dataloader: the data loader including bunch of batches of data
         """
-        self.layers = layers
+        self.layers = get_param_layers(model)
 
         # make sure we either pass a single batch or a dataloader
         assert (data != None and dataloader == None) or (
@@ -77,48 +70,47 @@ class hessian:
                 self.inputs, self.targets = self.inputs.cuda(), self.targets.cuda()
 
             # if we only compute the Hessian information for a single batch data, we can re-use the gradients.
-            outputs = self.model(self.inputs)
-            # targets = np.argmax(self.targets.cpu().detach().numpy(), axis=1)
-            # targets = torch.tensor(targets).cuda()
-            # print(f"shape of targets: {self.targets.shape}")
-            # print(f"shape of outputs: {outputs.shape}")
-            loss = self.criterion(self.targets, outputs)
+            outputs = self.model(self.inputs) 
+            targets = self.targets.detach().numpy()  # original
+            # targets = np.argmax(self.targets.detach().numpy(), axis=1)  # original
+            loss = self.criterion(outputs, torch.tensor(targets))
             # loss = self.criterion(outputs, self.targets)
             loss.backward(create_graph=True)
 
         # this step is used to extract the parameters from the model
-        params, gradsH, gradsL, paramsL = get_params_grad(self.model, layers)
+        params, gradsH, gradsL, paramsL = get_params_grad(self.model, self.layers)
         self.params = params
         self.gradsH = gradsH  # gradient used for Hessian computation
-        self.paramsL = paramsL  # params used for for each layer
-        self.gradsL = gradsL  # gradient used for for each layer
+        self.paramsL = paramsL  # params used for for each layer 
+        self.gradsL = gradsL  # gradient used for for each layer 
 
-    def dataloader_hv_product(self, v, gradsH, params):
+    def dataloader_hv_product(self, layer, params, v):
 
         device = self.device
         num_data = 0  # count the number of datum points in the dataloader
 
-        THv = [
-            torch.zeros(p.size()).to(device) for p in self.params
-        ]  # accumulate result
+        THv = [torch.zeros(p.size()).to(device) for p in params
+              ]  # accumulate result
         for inputs, targets in self.data:
             self.model.zero_grad()
             tmp_num_data = inputs.size(0)
             outputs = self.model(inputs.to(device))
-            loss = self.criterion(targets.to(device), outputs)
-            # targets = np.argmax(targets.detach().numpy(), axis=1)
-            # loss = self.criterion(outputs, torch.tensor(targets))
+            targets = targets.detach().numpy()
+            # targets = np.argmax(targets.detach().numpy(), axis=1)  # original
+            loss = self.criterion(outputs, torch.tensor(targets))
             # loss = self.criterion(outputs, targets.to(device))
             loss.backward(create_graph=True)
-            # params, gradsH, gradsL, paramsL = get_params_grad(self.model, self.layers)
-            print(f"gradsH len = {len(gradsH)}")
-            print(f"v len = {len(v)}")
+            params, gradsH, gradsL, paramsL = get_params_grad(self.model, self.layers)
             self.model.zero_grad()
-            # TODO: Problem is that len of gradsH mismatches len of v 
-            Hv = torch.autograd.grad(
-                gradsH, params, grad_outputs=v, only_inputs=True, retain_graph=False
-            )
-            THv = [THv1 + Hv1 * float(tmp_num_data) + 0.0 for THv1, Hv1 in zip(THv, Hv)]
+            Hv = torch.autograd.grad(gradsL[layer],
+                                     paramsL[layer],
+                                     grad_outputs=v,
+                                     only_inputs=True,
+                                     retain_graph=False)
+            THv = [
+                THv1 + Hv1 * float(tmp_num_data) + 0.
+                for THv1, Hv1 in zip(THv, Hv)
+            ]
             num_data += float(tmp_num_data)
 
         THv = [THv1 / float(num_data) for THv1 in THv]
@@ -146,16 +138,14 @@ class hessian:
         for layer in self.gradsL.keys():
             gradsH = self.gradsL[layer]
             params = self.paramsL[layer]
-            print(f"eigenvalues: len(gradsH) = {len(gradsH)}, len(params) = {len(params)}")
-
+            
             eigenvalues = []
             eigenvectors = []
             computed_dim = 0
             while computed_dim < top_n:
                 eigenvalue = None
-                v = [
-                    torch.randn(p.size()).to(device) for p in params
-                ]  # generate random vector
+                v = [torch.randn(p.size()).to(device) for p in params
+                    ]  # generate random vector
                 v = normalization(v)  # normalize the vector
 
                 for i in range(maxIter):
@@ -163,7 +153,7 @@ class hessian:
                     self.model.zero_grad()
 
                     if self.full_dataset:
-                        tmp_eigenvalue, Hv = self.dataloader_hv_product(v, gradsH, params)
+                        tmp_eigenvalue, Hv = self.dataloader_hv_product(v)
                     else:
                         Hv = hessian_vector_product(gradsH, params, v)
                         tmp_eigenvalue = group_product(Hv, v)
@@ -174,10 +164,8 @@ class hessian:
                     if eigenvalue == None:
                         eigenvalue = tmp_eigenvalue
                     else:
-                        if (
-                            abs(eigenvalue - tmp_eigenvalue) / (abs(eigenvalue) + 1e-6)
-                            < tol
-                        ):
+                        if abs(eigenvalue - tmp_eigenvalue) / (abs(eigenvalue) +
+                                                            1e-6) < tol:
                             break
                         else:
                             eigenvalue = tmp_eigenvalue
@@ -203,21 +191,24 @@ class hessian:
 
             device = self.device
             trace_vhv = []
-            trace = 0.0
+            trace = 0.
 
             for i in range(maxIter):
                 self.model.zero_grad()
-                v = [torch.randint_like(p, high=2, device=device) for p in params]
+                v = [
+                    torch.randint_like(p, high=2, device=device)
+                    for p in params
+                ]
                 # generate Rademacher random variables
                 for v_i in v:
                     v_i[v_i == 0] = -1
 
                 if self.full_dataset:
-                    _, Hv = self.dataloader_hv_product(v)
+                    _, Hv = self.dataloader_hv_product(layer, params, v)
                 else:
                     Hv = hessian_vector_product(gradsH, params, v)
-                # trace_vhv.append(group_product(Hv, v))
-                trace_vhv.append(group_product(Hv, v).cpu().item())
+                trace_vhv.append(group_product(Hv, v))
+                # trace_vhv.append(group_product(Hv, v).cpu().item())
                 if abs(np.mean(trace_vhv) - trace) / (abs(trace) + 1e-6) < tol:
                     trace_vhvL[layer] = trace_vhv
                     # return trace_vhv, trace_vhvL

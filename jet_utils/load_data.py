@@ -12,7 +12,7 @@ import torch
 import torch.optim
 import torch.utils.data
 
-from jet_utils.jet_dataset import JetTaggingDataset
+from jet_utils.jet_dataset import JetDataset
 
 
 # ------------------------------------------------------------
@@ -26,8 +26,8 @@ def open_config(filename):
             print(exc)
 
 
-def load_data(path, batch_size, data_percentage, config, shuffle=True):
-    dataset = JetTaggingDataset(path, config["features"], config["preprocess"])
+def load_data(path, batch_size, data_percentage, config, train=True, shuffle=True):
+    dataset = JetDataset(path, config["features"], config["preprocess"], train=train)
     print(len(dataset))
     dataset_length = int(len(dataset) * data_percentage)
     partial_dataset, _ = torch.utils.data.random_split(
@@ -46,16 +46,19 @@ def load_data(path, batch_size, data_percentage, config, shuffle=True):
 def load_dataset(data_path, batch_size, config):
     data_config = open_config(config)["data"]
     train_loader = load_data(
-        path=os.path.join(data_path, "train"),
+        path=data_path,
         batch_size=batch_size,
         data_percentage=0.75,
         config=data_config,
+        train=True,
     )
     val_loader = load_data(
-        path=os.path.join(data_path, "val"),
+        path=data_path,
         batch_size=batch_size,
         data_percentage=1,
         shuffle=False,
         config=data_config,
+        train=False,
     )
     return train_loader, val_loader
+

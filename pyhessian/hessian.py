@@ -34,7 +34,7 @@ class hessian:
         iii) the estimated eigenvalue density
     """
 
-    def __init__(self, model, criterion, layers, data=None, dataloader=None, cuda=True):
+    def __init__(self, model, criterion, data=None, dataloader=None, cuda=True):
         """
         model: the model that needs Hessain information
         criterion: the loss function
@@ -42,6 +42,7 @@ class hessian:
         dataloader: the data loader including bunch of batches of data
         """
         self.layers = get_param_layers(model)
+        print(f"Found layers: {self.layers}")
 
         # make sure we either pass a single batch or a dataloader
         assert (data != None and dataloader == None) or (
@@ -71,9 +72,9 @@ class hessian:
 
             # if we only compute the Hessian information for a single batch data, we can re-use the gradients.
             outputs = self.model(self.inputs) 
-            targets = self.targets.detach().numpy()  # original
+            # targets = self.targets.detach().numpy()  # original
             # targets = np.argmax(self.targets.detach().numpy(), axis=1)  # original
-            loss = self.criterion(outputs, torch.tensor(targets))
+            loss = self.criterion(self.targets, outputs)
             # loss = self.criterion(outputs, self.targets)
             loss.backward(create_graph=True)
 
@@ -95,9 +96,9 @@ class hessian:
             self.model.zero_grad()
             tmp_num_data = inputs.size(0)
             outputs = self.model(inputs.to(device))
-            targets = targets.detach().numpy()
+            # targets = targets.detach().numpy()
             # targets = np.argmax(targets.detach().numpy(), axis=1)  # original
-            loss = self.criterion(outputs, torch.tensor(targets))
+            loss = self.criterion(targets.to(device), outputs)
             # loss = self.criterion(outputs, targets.to(device))
             loss.backward(create_graph=True)
             params, gradsH, gradsL, paramsL = get_params_grad(self.model, self.layers)
@@ -153,7 +154,7 @@ class hessian:
                     self.model.zero_grad()
 
                     if self.full_dataset:
-                        tmp_eigenvalue, Hv = self.dataloader_hv_product(v)
+                        tmp_eigenvalue, Hv = self.dataloader_hv_product(layer, params, v)
                     else:
                         Hv = hessian_vector_product(gradsH, params, v)
                         tmp_eigenvalue = group_product(Hv, v)
@@ -207,8 +208,8 @@ class hessian:
                     _, Hv = self.dataloader_hv_product(layer, params, v)
                 else:
                     Hv = hessian_vector_product(gradsH, params, v)
-                trace_vhv.append(group_product(Hv, v))
-                # trace_vhv.append(group_product(Hv, v).cpu().item())
+                # trace_vhv.append(group_product(Hv, v))
+                trace_vhv.append(group_product(Hv, v).cpu().item())
                 if abs(np.mean(trace_vhv) - trace) / (abs(trace) + 1e-6) < tol:
                     trace_vhvL[layer] = trace_vhv
                     # return trace_vhv, trace_vhvL

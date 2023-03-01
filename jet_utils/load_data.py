@@ -59,4 +59,3 @@ def load_dataset(data_path, batch_size, config):
         config=data_config,
     )
     return train_loader, val_loader
-

@@ -1,4 +1,4 @@
-#*
+# *
 # @file Different utility functions
 # Copyright (c) Zhewei Yao, Amir Gholami
 # All rights reserved.
@@ -16,32 +16,31 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PyHessian.  If not, see <http://www.gnu.org/licenses/>.
-#*
+# *
 
 import math
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
+
+mpl.use("Agg")
 import matplotlib.pyplot as plt
 
 
 def get_esd_plot(eigenvalues, weights):
     density, grids = density_generate(eigenvalues, weights)
     plt.semilogy(grids, density + 1.0e-7)
-    plt.ylabel('Density (Log Scale)', fontsize=14, labelpad=10)
-    plt.xlabel('Eigenvlaue', fontsize=14, labelpad=10)
+    plt.ylabel("Density (Log Scale)", fontsize=14, labelpad=10)
+    plt.xlabel("Eigenvlaue", fontsize=14, labelpad=10)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
     plt.tight_layout()
-    plt.savefig('example.pdf')
+    plt.savefig("example.pdf")
 
 
-def density_generate(eigenvalues,
-                     weights,
-                     num_bins=10000,
-                     sigma_squared=1e-5,
-                     overhead=0.01):
+def density_generate(
+    eigenvalues, weights, num_bins=10000, sigma_squared=1e-5, overhead=0.01
+):
 
     eigenvalues = np.array(eigenvalues)
     weights = np.array(weights)
@@ -67,5 +66,6 @@ def density_generate(eigenvalues,
 
 
 def gaussian(x, x0, sigma_squared):
-    return np.exp(-(x0 - x)**2 /
-                  (2.0 * sigma_squared)) / np.sqrt(2 * np.pi * sigma_squared)
+    return np.exp(-((x0 - x) ** 2) / (2.0 * sigma_squared)) / np.sqrt(
+        2 * np.pi * sigma_squared
+    )

@@ -1,4 +1,4 @@
-#*
+# *
 # @file Different utility functions
 # Copyright (c) Zhewei Yao, Amir Gholami
 # All rights reserved.
@@ -16,7 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with PyHessian.  If not, see <http://www.gnu.org/licenses/>.
-#*
+# *
 
 from __future__ import print_function
 import logging
@@ -37,63 +37,63 @@ from models.resnet import resnet
 from tqdm import tqdm, trange
 
 # Training settings
-parser = argparse.ArgumentParser(description='Training on Cifar10')
+parser = argparse.ArgumentParser(description="Training on Cifar10")
 
-parser.add_argument('--batch-size',
-                    type=int,
-                    default=128,
-                    metavar='N',
-                    help='input batch size for training (default: 128)')
-parser.add_argument('--test-batch-size',
-                    type=int,
-                    default=256,
-                    metavar='N',
-                    help='input batch size for testing (default: 256)')
-parser.add_argument('--epochs',
-                    type=int,
-                    default=180,
-                    metavar='N',
-                    help='number of epochs to train (default: 10)')
+parser.add_argument(
+    "--batch-size",
+    type=int,
+    default=128,
+    metavar="N",
+    help="input batch size for training (default: 128)",
+)
+parser.add_argument(
+    "--test-batch-size",
+    type=int,
+    default=256,
+    metavar="N",
+    help="input batch size for testing (default: 256)",
+)
+parser.add_argument(
+    "--epochs",
+    type=int,
+    default=180,
+    metavar="N",
+    help="number of epochs to train (default: 10)",
+)
 
-parser.add_argument('--lr',
-                    type=float,
-                    default=0.1,
-                    metavar='LR',
-                    help='learning rate (default: 0.01)')
-parser.add_argument('--lr-decay',
-                    type=float,
-                    default=0.1,
-                    help='learning rate ratio')
-parser.add_argument('--lr-decay-epoch',
-                    type=int,
-                    nargs='+',
-                    default=[80, 120],
-                    help='Decrease learning rate at these epochs.')
+parser.add_argument(
+    "--lr", type=float, default=0.1, metavar="LR", help="learning rate (default: 0.01)"
+)
+parser.add_argument("--lr-decay", type=float, default=0.1, help="learning rate ratio")
+parser.add_argument(
+    "--lr-decay-epoch",
+    type=int,
+    nargs="+",
+    default=[80, 120],
+    help="Decrease learning rate at these epochs.",
+)
 
-parser.add_argument('--seed',
-                    type=int,
-                    default=1,
-                    metavar='S',
-                    help='random seed (default: 1)')
-parser.add_argument('--weight-decay',
-                    default=5e-4,
-                    type=float,
-                    metavar='W',
-                    help='weight decay (default: 1e-4)')
-parser.add_argument('--batch-norm',
-                    action='store_false',
-                    help='do we need batch norm or not')
-parser.add_argument('--residual',
-                    action='store_false',
-                    help='do we need residula connect or not')
+parser.add_argument(
+    "--seed", type=int, default=1, metavar="S", help="random seed (default: 1)"
+)
+parser.add_argument(
+    "--weight-decay",
+    default=5e-4,
+    type=float,
+    metavar="W",
+    help="weight decay (default: 1e-4)",
+)
+parser.add_argument(
+    "--batch-norm", action="store_false", help="do we need batch norm or not"
+)
+parser.add_argument(
+    "--residual", action="store_false", help="do we need residula connect or not"
+)
 
-parser.add_argument('--cuda',
-                    action='store_false',
-                    help='do we use gpu or not')
-parser.add_argument('--saving-folder',
-                    type=str,
-                    default='checkpoints/',
-                    help='choose saving name')
+parser.add_argument("--cuda", action="store_false", help="do we use gpu or not")
+parser.add_argument(
+    "--saving-folder", type=str, default="checkpoints/", help="choose saving name"
+)
 
 args = parser.parse_args()
 
@@ -106,34 +106,32 @@ for arg in vars(args):
     print(arg, getattr(args, arg))
 
 # get dataset
-train_loader, test_loader = getData(name='cifar10',
-                                    train_bs=args.batch_size,
-                                    test_bs=args.test_batch_size)
+train_loader, test_loader = getData(
+    name="cifar10", train_bs=args.batch_size, test_bs=args.test_batch_size
+)
 
 # get model and optimizer
-model = resnet(num_classes=10,
-               depth=20,
-               residual_not=args.residual,
-               batch_norm_not=args.batch_norm)
+model = resnet(
+    num_classes=10, depth=20, residual_not=args.residual, batch_norm_not=args.batch_norm
+)
 if args.cuda:
     model = model.cuda()
 model = torch.nn.DataParallel(model)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(),
-                      lr=args.lr,
-                      momentum=0.9,
-                      weight_decay=args.weight_decay)
-lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer,
-                                              args.lr_decay_epoch,
-                                              gamma=args.lr_decay)
+optimizer = optim.SGD(
+    model.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay
+)
+lr_scheduler = optim.lr_scheduler.MultiStepLR(
+    optimizer, args.lr_decay_epoch, gamma=args.lr_decay
+)
 
 if not os.path.isdir(args.saving_folder):
     os.makedirs(args.saving_folder)
 
 for epoch in range(1, args.epochs + 1):
-    print('Current Epoch: ', epoch)
-    train_loss = 0.
+    print("Current Epoch: ", epoch)
+    train_loss = 0.0
     total_num = 0
     correct = 0
     with tqdm(total=len(train_loader.dataset)) as progressbar:
@@ -153,12 +151,13 @@ for epoch in range(1, args.epochs + 1):
             optimizer.step()
             optimizer.zero_grad()
 
-            progressbar.set_postfix(loss=train_loss / total_num,
-                                    acc=100. * correct / total_num)
+            progressbar.set_postfix(
+                loss=train_loss / total_num, acc=100.0 * correct / total_num
+            )
 
             progressbar.update(target.size(0))
 
     acc = test(model, test_loader)
     lr_scheduler.step()
 
-torch.save(model.state_dict(), args.saving_folder + 'net.pkl')
+torch.save(model.state_dict(), args.saving_folder + "net.pkl")
